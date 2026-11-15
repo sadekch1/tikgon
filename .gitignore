@@ -1,0 +1,11 @@
+node_modules/
+*.log
+.gradle/
+build/
+local.properties
+.idea/
+android/app/libnode/
+android/app/.cxx/
+android/app/src/main/assets/nodejs/main.js
+android/node_tmp/
+android/node.zip
