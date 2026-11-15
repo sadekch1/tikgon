@@ -2,8 +2,17 @@
 
 package com.example.tikgon.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,10 +21,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -23,12 +36,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -42,7 +51,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -56,8 +67,7 @@ import com.example.tikgon.Repo
 @Composable
 fun AppRoot() {
     val th by Prefs.theme.collectAsState()
-    val ac by Prefs.accent.collectAsState()
-    AppTheme(th, ac) {
+    AppTheme(th) {
         val fatal by Repo.fatal.collectAsState()
         val crash by Repo.lastCrash.collectAsState()
         val clip = LocalClipboardManager.current
@@ -106,48 +116,42 @@ fun MainFlow() {
     }
 }
 
-// ───────────────────────── الشاشة الرئيسية (تنقّل سفلي مثل TikTok) ─────────────────────────
+// ───────────────────────── الشاشة الرئيسية ─────────────────────────
+/**
+ * الخلاصة تبقى مركّبة دائماً في الخلفية (حتى لا يضيع مكان المستخدم عند التنقّل
+ * بين التبويبات)، والصفحات الأخرى تُرسم فوقها، وشريط التنقّل زجاجي سفلي
+ * يختفي تماماً في وضع ملء الشاشة النظيف.
+ */
 @Composable
 fun TikGonRoot() {
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var showHint by remember { mutableStateOf(false) }
-    val items = listOf(
-        "الرئيسة" to "🏠",
-        "اكتشف" to "🧭",
-        "" to "＋",
-        "الوارد" to "💬",
-        "أنا" to "👤"
-    )
-    val surface = MaterialTheme.colorScheme.surface
+    var cleanMode by remember { mutableStateOf(false) }
 
-    Scaffold(
-        containerColor = Color.Black,
-        bottomBar = {
-            NavigationBar(containerColor = surface) {
-                items.forEachIndexed { i, (label, icon) ->
-                    NavigationBarItem(
-                        selected = tab == i && i != 2,
-                        onClick = { if (i == 2) showHint = true else tab = i },
-                        icon = { Text(icon, fontSize = if (i == 2) 26.sp else 20.sp) },
-                        label = if (label.isEmpty()) null else ({ Text(label, fontSize = 12.sp) }),
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedTextColor = MaterialTheme.colorScheme.primary,
-                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            indicatorColor = MaterialTheme.colorScheme.primaryContainer
-                        )
-                    )
+    Box(Modifier.fillMaxSize().background(Color.Black)) {
+        // الخلاصة: دائماً في التركيب؛ تُوقَف وتُحفظ أماكنها عند مغادرة تبويبها
+        FeedScreen(active = tab == 0, onCleanMode = { cleanMode = it })
+
+        // الصفحات الأخرى فوق الخلاصة بخلفية معتمة من السمة
+        if (tab != 0) {
+            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+                when (tab) {
+                    1 -> DiscoverPage()
+                    3 -> InboxPage()
+                    4 -> ProfilePage(onOpenFeed = { tab = 0 })
                 }
             }
         }
-    ) { pad ->
-        Box(Modifier.padding(pad).fillMaxSize().background(Color.Black)) {
-            when (tab) {
-                0 -> FeedScreen(onOpenProfile = { tab = 4 })
-                1 -> DiscoverPage()
-                3 -> InboxPage()
-                4 -> ProfilePage(onOpenFeed = { tab = 0 })
-                else -> FeedScreen(onOpenProfile = { tab = 4 })
-            }
+
+        AnimatedVisibility(
+            visible = !cleanMode,
+            enter = slideInVertically { it } + fadeIn(),
+            exit = slideOutVertically { it } + fadeOut(),
+            modifier = Modifier.align(Alignment.BottomCenter)
+        ) {
+            TikGonNavBar(tab = tab, onTab = { i ->
+                if (i == 2) showHint = true else tab = i
+            })
         }
     }
 
@@ -169,7 +173,93 @@ fun TikGonRoot() {
     }
 }
 
-// ───────────────────────── تسجيل الدخول (من WA Hub — ربط برقم الهاتف) ─────────────────────────
+@Composable
+private fun TikGonNavBar(tab: Int, onTab: (Int) -> Unit) {
+    val theme = LocalAppTheme.current
+    val items = listOf(
+        "الرئيسة" to "🏠",
+        "اكتشف" to "🧭",
+        "" to "＋",
+        "الوارد" to "💬",
+        "أنا" to "👤"
+    )
+    Box(
+        Modifier.fillMaxWidth()
+            .background(theme.surface.copy(alpha = 0.88f))
+            .border(width = 0.5.dp, color = Color.White.copy(alpha = 0.07f))
+            .navigationBarsPadding()
+    ) {
+        Row(
+            Modifier.fillMaxWidth().height(64.dp).padding(horizontal = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            items.forEachIndexed { i, (label, icon) ->
+                if (i == 2) {
+                    // زر المنتصف البارز بتدرّج لون التمييز
+                    Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                        val interaction = remember { MutableInteractionSource() }
+                        val pressed by interaction.collectIsPressedAsState()
+                        val scale by animateFloatAsState(if (pressed) 0.88f else 1f, label = "plusPress")
+                        Box(
+                            Modifier.offset(y = (-8).dp).size(48.dp)
+                                .graphicsLayer { scaleX = scale; scaleY = scale }
+                                .clip(CircleShape)
+                                .background(
+                                    Brush.linearGradient(listOf(theme.accent, theme.accent2))
+                                )
+                                .border(1.dp, Color.White.copy(alpha = 0.25f), CircleShape)
+                                .clickable(interactionSource = interaction, indication = null) { onTab(2) },
+                            contentAlignment = Alignment.Center
+                        ) { Text("＋", fontSize = 24.sp, color = Color.White, fontWeight = FontWeight.Bold) }
+                    }
+                } else {
+                    NavItem(
+                        icon = icon, label = label,
+                        selected = tab == i,
+                        modifier = Modifier.weight(1f)
+                    ) { onTab(i) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NavItem(
+    icon: String,
+    label: String,
+    selected: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    val accent = MaterialTheme.colorScheme.primary
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(if (pressed) 0.85f else 1f, label = "navPress")
+    val indicatorW by animateFloatAsState(if (selected) 20f else 0f, label = "navDot")
+    Column(
+        modifier.height(64.dp)
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .clickable(interactionSource = interaction, indication = null) { onClick() }
+            .padding(top = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(icon, fontSize = 21.sp)
+        Spacer(Modifier.height(2.dp))
+        Text(
+            label, fontSize = 11.sp,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+            color = if (selected) accent else MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(3.dp))
+        Box(
+            Modifier.width(indicatorW.dp).height(3.dp).clip(RoundedCornerShape(3.dp))
+                .background(if (selected) accent else Color.Transparent)
+        )
+    }
+}
+
+// ───────────────────────── تسجيل الدخول (ربط برقم الهاتف) ─────────────────────────
 @Composable
 fun LoginScreen() {
     val code by Repo.code.collectAsState()
@@ -178,6 +268,7 @@ fun LoginScreen() {
     val pairing by Repo.pairingActive.collectAsState()
     val clipboard = LocalClipboardManager.current
     var phone by rememberSaveable { mutableStateOf("") }
+    val theme = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
 
     Column(
@@ -186,12 +277,13 @@ fun LoginScreen() {
         verticalArrangement = Arrangement.Center
     ) {
         Box(
-            Modifier.size(84.dp).clip(RoundedCornerShape(26.dp)).background(accent),
+            Modifier.size(88.dp).clip(RoundedCornerShape(28.dp))
+                .background(Brush.linearGradient(listOf(theme.accent, theme.accent2))),
             contentAlignment = Alignment.Center
-        ) { Text("▶", fontSize = 40.sp, color = Color.White) }
+        ) { Text("▶", fontSize = 42.sp, color = Color.White) }
 
         Spacer(Modifier.height(16.dp))
-        Text("TikGon", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
+        Text("TikGon", fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onBackground)
         SubText("اربط رقمك مرة واحدة وتُحفظ الجلسة — التطبيق يستقبل فقط ولا يرسل شيئاً")
         Spacer(Modifier.height(28.dp))
 

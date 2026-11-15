@@ -49,9 +49,8 @@ fun ChatPickerScreen() {
     }
 
     Column(Modifier.fillMaxSize().systemBarsPadding().padding(20.dp)) {
-        Text("اختر محادثة البوت", fontSize = 22.sp, fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground)
-        Spacer(Modifier.height(4.dp))
+        PageHeader("اختر محادثة البوت")
+        Spacer(Modifier.height(8.dp))
         SubText("TikGon سيراقب هذه المحادثة فقط: كل فيديو يرسله البوت فيها يُنزَّل ويظهر في الخلاصة.")
         Spacer(Modifier.height(14.dp))
 

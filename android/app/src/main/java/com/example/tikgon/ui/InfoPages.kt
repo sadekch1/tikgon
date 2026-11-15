@@ -37,8 +37,8 @@ fun DiscoverPage() {
     Column(
         Modifier.fillMaxSize().systemBarsPadding().verticalScroll(rememberScrollState()).padding(20.dp)
     ) {
-        Text("اكتشف", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
-        Spacer(Modifier.height(14.dp))
+        PageHeader("اكتشف")
+        Spacer(Modifier.height(18.dp))
 
         AppCard {
             SectionTitle("الجلسة الحالية")
@@ -79,6 +79,7 @@ fun DiscoverPage() {
             SubText("المحادثة المراقبة: ${chatName.ifEmpty { "—" }}")
             SubText("الاتصال: " + connText(conn))
         }
+        Spacer(Modifier.height(90.dp))
     }
 }
 
@@ -94,8 +95,8 @@ fun InboxPage() {
     Column(
         Modifier.fillMaxSize().systemBarsPadding().verticalScroll(rememberScrollState()).padding(20.dp)
     ) {
-        Text("الوارد", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
-        Spacer(Modifier.height(14.dp))
+        PageHeader("الوارد")
+        Spacer(Modifier.height(18.dp))
 
         AppCard {
             SectionTitle("المحرك")
@@ -144,5 +145,6 @@ fun InboxPage() {
             Spacer(Modifier.height(6.dp))
             logs.takeLast(30).forEach { SubText(it) }
         }
+        Spacer(Modifier.height(90.dp))
     }
 }
